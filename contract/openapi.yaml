@@ -1,0 +1,261 @@
+openapi: 3.0.0
+info:
+  title: Call Booking API
+  version: 0.0.0
+tags: []
+paths:
+  /admin/event-types:
+    post:
+      operationId: Admin_createEventType
+      description: Create a new event type
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventType'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventTypeRequest'
+  /admin/upcoming-bookings:
+    get:
+      operationId: Admin_listUpcomingBookings
+      description: List all upcoming bookings across all event types, sorted by start time
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UpcomingBooking'
+  /bookings:
+    post:
+      operationId: Bookings_create
+      description: Create a new booking
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+  /event-types:
+    get:
+      operationId: EventTypes_list
+      description: List all available event types
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventType'
+  /event-types/{eventTypeId}/available-slots:
+    get:
+      operationId: EventTypes_getAvailableSlots
+      description: Get available time slots for a specific event type on a given date (within 14-day window)
+      parameters:
+        - name: eventTypeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TimeSlot'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    Booking:
+      type: object
+      required:
+        - id
+        - eventTypeId
+        - startTime
+        - endTime
+        - guestName
+        - guestEmail
+      properties:
+        id:
+          type: string
+        eventTypeId:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        guestName:
+          type: string
+        guestEmail:
+          type: string
+    BookingRequest:
+      type: object
+      required:
+        - eventTypeId
+        - startTime
+        - guestName
+        - guestEmail
+      properties:
+        eventTypeId:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        guestName:
+          type: string
+        guestEmail:
+          type: string
+    CreateEventTypeRequest:
+      type: object
+      required:
+        - name
+        - description
+        - duration
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        duration:
+          type: integer
+          format: int32
+          description: Duration in minutes
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    EventType:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - duration
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        duration:
+          type: integer
+          format: int32
+          description: Duration in minutes
+    TimeSlot:
+      type: object
+      required:
+        - startTime
+        - endTime
+      properties:
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+    UpcomingBooking:
+      type: object
+      required:
+        - id
+        - eventTypeId
+        - startTime
+        - endTime
+        - guestName
+        - guestEmail
+        - eventTypeName
+      properties:
+        id:
+          type: string
+        eventTypeId:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        guestName:
+          type: string
+        guestEmail:
+          type: string
+        eventTypeName:
+          type: string
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+    variables: {}

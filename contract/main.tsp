@@ -5,7 +5,7 @@ import "@typespec/openapi3";
 using TypeSpec.Http;
 using TypeSpec.Rest;
 
-@service({
+@service(#{
   title: "Call Booking API",
 })
 @server("http://localhost:8080", "Local development server")

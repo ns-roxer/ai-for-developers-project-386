@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS bookings;
+DROP TABLE IF EXISTS event_types;
+DROP EXTENSION IF EXISTS btree_gist;
