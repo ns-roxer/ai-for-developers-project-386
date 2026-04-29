@@ -47,6 +47,10 @@ frontend/.tsbuildinfo
 # Vite cache
 frontend/.vite/
 
+### Playwright
+playwright-report/
+test-results/
+
 ### Environment & secrets
 .env
 .env.local

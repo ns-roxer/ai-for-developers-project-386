@@ -1,0 +1,27 @@
+{
+  "name": "ai-for-developers-project-386",
+  "version": "1.0.0",
+  "description": "[![Actions Status](https://github.com/ns-roxer/ai-for-developers-project-386/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/ns-roxer/ai-for-developers-project-386/actions)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ns-roxer/ai-for-developers-project-386.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ns-roxer/ai-for-developers-project-386/issues"
+  },
+  "homepage": "https://github.com/ns-roxer/ai-for-developers-project-386#readme",
+  "devDependencies": {
+    "@playwright/mcp": "^0.0.71",
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0",
+    "chrome-devtools-mcp": "^0.23.0"
+  }
+}

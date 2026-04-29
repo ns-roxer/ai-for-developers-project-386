@@ -183,3 +183,74 @@ npm run build   # npx tsp compile .
 
 The TypeSpec definition in `contract/main.tsp` is the single source of truth for the API contract. After compiling, copy or reference the generated `openapi.yaml` when updating frontend types or backend handlers.
 
+---
+
+## 🧪 E2E Testing
+
+### Stack: Playwright + Chromium
+End-to-end tests live in the `e2e/` directory and are configured via `playwright.config.ts` at the project root.
+
+### Running Tests
+
+```bash
+# Ensure services are running first
+docker compose up --build -d
+cd frontend && npm run dev &
+
+# Run all E2E tests (headless)
+make test-e2e          # or: npx playwright test
+
+# Run in headed mode (see the browser)
+make test-e2e-headed   # or: npx playwright test --headed
+
+# Open Playwright interactive UI
+make test-e2e-ui       # or: npx playwright test --ui
+```
+
+### Test Files
+| File | Coverage |
+|------|----------|
+| `e2e/event-type-list.spec.ts` | Home page: seeded event types render, Book buttons link correctly, nav links present, duration display, descriptions |
+| `e2e/booking-flow.spec.ts` | Full booking: pick date → pick slot → fill form → confirm screen, 14-day calendar constraint, date switching, form validation, back link navigation |
+| `e2e/booking-conflict.spec.ts` | Double-booking conflict: booked slot removed from UI, API returns 409 on duplicate |
+| `e2e/create-event-type.spec.ts` | Admin: create event type form, validation errors (empty fields, invalid duration), redirect to home, loading state |
+| `e2e/upcoming-bookings.spec.ts` | Admin: bookings table displays API-created bookings, table headers, sort order, event type name column |
+| `e2e/navigation.spec.ts` | Full navigation: header links, Book button, back links, logo/brand link |
+
+### Helpers (`e2e/helpers.ts`)
+- API helpers that talk directly to the backend on `:8080` (bypass Vite proxy) for test setup
+- `getEventTypes()`, `createBookingAPI()`, `getAvailableSlots()`, `createEventType()`
+- Date helpers: `getTomorrowDate()`, `getDatePlusDays(n)`
+
+---
+
+## 🔌 MCP Servers (AI Agent Browser Tools)
+
+The project includes two MCP (Model Context Protocol) servers configured in `.mcp.json` for AI-driven browser interaction during development and debugging:
+
+### Playwright MCP (`@playwright/mcp`)
+- **Source:** https://github.com/microsoft/playwright-mcp
+- **Purpose:** Lets AI agents launch a browser, navigate pages, click elements, fill forms, take screenshots, and run accessibility checks.
+- **Usage:** Automatically available when MCP-compatible AI tools read `.mcp.json`.
+
+### Chrome DevTools MCP (`chrome-devtools-mcp`)
+- **Source:** https://github.com/ChromeDevTools/chrome-devtools-mcp
+- **Purpose:** Lets AI agents inspect DOM, monitor network requests, read console logs, and analyze performance via Chrome DevTools Protocol.
+- **Usage:** Connects to a running Chrome instance with remote debugging enabled.
+
+### MCP Configuration (`.mcp.json`)
+```json
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--browser", "chromium"]
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@latest"]
+    }
+  }
+}
+```
+
