@@ -1,0 +1,24 @@
+databases:
+  - name: callbooking-db
+    plan: free
+    databaseName: callbooking
+    user: callbooking
+
+services:
+  - type: web
+    name: callbooking
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: DATABASE_URL
+        fromDatabase:
+          name: callbooking-db
+          property: connectionString
+      - key: CORS_ALLOWED_ORIGINS
+        value: "*"
+      - key: LOG_LEVEL
+        value: info

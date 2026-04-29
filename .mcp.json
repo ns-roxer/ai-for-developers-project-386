@@ -11,6 +11,13 @@
       "command": "npx",
       "args": ["chrome-devtools-mcp@latest"],
       "env": {}
+    },
+    "render": {
+      "command": "npx",
+      "args": ["@render/mcp-server@latest"],
+      "env": {
+        "RENDER_API_KEY": "${RENDER_API_KEY}"
+      }
     }
   }
 }

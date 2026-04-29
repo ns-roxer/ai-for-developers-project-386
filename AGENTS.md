@@ -48,18 +48,26 @@ This document defines the roles, responsibilities, and step-by-step instructions
 ## 📁 Project Structure
 
 ```
-├── contract/                  # API-first contract (TypeSpec → OpenAPI)
-│   ├── main.tsp               # TypeSpec source of truth
+├── Dockerfile                  # Combined multi-stage: frontend + backend → single image
+├── docker-compose.yml          # postgres + backend services
+├── Makefile                    # Dev workflow shortcuts (see below)
+├── package.json                # Root: Playwright + MCP dev deps
+├── tsconfig.json               # Root: covers playwright.config.ts + e2e/**
+├── playwright.config.ts        # E2E config with auto webServer startup
+├── .mcp.json                   # MCP server config for AI agents
+├── contract/                   # API-first contract (TypeSpec → OpenAPI)
+│   ├── main.tsp                # TypeSpec source of truth
+│   ├── openapi.yaml            # Canonical OpenAPI spec (also in tsp-output/)
 │   ├── tspconfig.yaml
 │   ├── package.json            # build: npx tsp compile .
 │   └── tsp-output/@typespec/openapi3/openapi.yaml
 ├── backend/                   # Go API server
 │   ├── Dockerfile              # Multi-stage: golang:1.26-alpine → alpine:3.23
 │   ├── go.mod                  # module github.com/hexlet/call-booking/backend
-│   └── cmd/server/main.go     # Entrypoint
+│   └── cmd/server/main.go     # Entrypoint (migrations + graceful shutdown)
 │   └── internal/
 │       ├── config/config.go    # Env-based config (DATABASE_URL, PORT, etc.)
-│       ├── handler/handler.go  # Chi router + HTTP handlers
+│       ├── handler/handler.go  # Chi router + HTTP handlers + SPA serving
 │       ├── service/service.go  # Business logic (14-day window, slot generation)
 │       ├── repository/repository.go  # PostgreSQL queries via squirrel
 │       ├── models/models.go    # Shared domain structs
@@ -80,8 +88,9 @@ This document defines the roles, responsibilities, and step-by-step instructions
 │       │   └── admin/
 │       │       ├── CreateEventTypePage.tsx  # /admin/event-types/new
 │       │       └── UpcomingBookingsPage.tsx # /admin/bookings
+│       ├── components/Layout.tsx  # Shared layout with nav + Toaster
 │       └── components/ui/      # shadcn/ui components
-└── docker-compose.yml          # postgres + backend services
+└── e2e/                       # Playwright E2E tests + helpers
 ```
 
 ---
@@ -108,6 +117,14 @@ Error responses use `{ "code": "...", "message": "..." }` format. Service errors
 - **repository** (`internal/repository/`): Database access using **pgx/v5** pool + **squirrel** query builder with `sq.Dollar` placeholders.
 - **models** (`internal/models/`): Plain structs shared across layers. JSON tags use camelCase.
 
+### Dual Route Registration
+All API routes are registered at **both** the root (`/event-types`, `/bookings`, etc.) and under the `/api` prefix (`/api/event-types`, etc.). This enables:
+- Direct access on `:8080` (used by E2E test helpers and Docker health checks)
+- Proxied access from the Vite dev server (`/api` → `:8080`, path rewritten to strip `/api`)
+
+### SPA Serving (Combined Dockerfile)
+The root-level `Dockerfile` builds both frontend and backend into one image. When `STATIC_DIR` env var is set, the backend serves static files from that directory and falls back to `index.html` for client-side routes (SPA mode). See `spaHandler()` in `handler.go`.
+
 ### Key Libraries
 - **Routing:** `go-chi/chi/v5` with `middleware.RealIP`, `RequestID`, `Recoverer`
 - **Database driver:** `jackc/pgx/v5/pgxpool`
@@ -128,6 +145,7 @@ Error responses use `{ "code": "...", "message": "..." }` format. Service errors
 | `CORS_ALLOWED_ORIGINS` | `*` | |
 | `LOG_LEVEL` | `info` | |
 | `SHUTDOWN_TIMEOUT` | `5s` | |
+| `STATIC_DIR` | — | | Only for combined image (root Dockerfile) |
 
 ---
 
@@ -166,6 +184,22 @@ cd frontend && npm install && npm run dev
 # Frontend available at http://localhost:5173
 ```
 
+### Makefile Targets
+| Target | Description |
+|--------|-------------|
+| `make db` | Start only PostgreSQL via Docker Compose |
+| `make backend` | Build and run backend (attached) |
+| `make frontend` | Install deps + run Vite dev server |
+| `make mock` | Start Prism mock server on :8080 |
+| `make start` | Start all (DB + backend in Docker, frontend locally) |
+| `make stop` | Stop Docker Compose services |
+| `make logs` | Tail Docker Compose logs |
+| `make build-frontend` | Production build of frontend |
+| `make lint-frontend` | Run ESLint on frontend |
+| `make test-e2e` | Run Playwright E2E tests (headless) |
+| `make test-e2e-headed` | Run E2E tests with visible browser |
+| `make test-e2e-ui` | Open Playwright interactive UI |
+
 ### Docker Compose Services
 - **postgres**: `postgres:16-alpine`, DB name/user/pass: `callbooking`
 - **backend**: Built from `backend/Dockerfile`, depends on postgres healthcheck
@@ -181,14 +215,29 @@ npm run build   # npx tsp compile .
 # Output: tsp-output/@typespec/openapi3/openapi.yaml
 ```
 
-The TypeSpec definition in `contract/main.tsp` is the single source of truth for the API contract. After compiling, copy or reference the generated `openapi.yaml` when updating frontend types or backend handlers.
+The TypeSpec definition in `contract/main.tsp` is the single source of truth for the API contract. After compiling, the output lands in `tsp-output/@typespec/openapi3/openapi.yaml`. A copy at `contract/openapi.yaml` serves as the canonical reference used by Prism mocking (`npm run mock` in frontend) and documentation.
+
+### Seeded Data
+Migration `002_seed.up.sql` inserts three event types on first startup:
+- "15 Minute Meeting" (15 min)
+- "30 Minute Meeting" (30 min)
+- "60 Minute Meeting" (60 min)
+
+E2E tests rely on these seeded records (see `SEED_EVENT_TYPES` in `e2e/helpers.ts`).
 
 ---
 
 ## 🧪 E2E Testing
 
 ### Stack: Playwright + Chromium
-End-to-end tests live in the `e2e/` directory and are configured via `playwright.config.ts` at the project root.
+End-to-end tests live in the `e2e/` directory and are configured via `playwright.config.ts` at the project root. Root `tsconfig.json` covers `e2e/` and `playwright.config.ts`.
+
+### Playwright Config
+- `fullyParallel: false`, `workers: 1` — tests run sequentially (shared DB state)
+- `timeout: 60_000`, `expect.timeout: 10_000`
+- `webServer` auto-starts Docker backend + Vite frontend (reuses existing in non-CI)
+- Backend health check: `http://localhost:8080/event-types`
+- `BASE_URL` env var overrides frontend URL (default: `http://localhost:5173`)
 
 ### Running Tests
 
@@ -244,11 +293,15 @@ The project includes two MCP (Model Context Protocol) servers configured in `.mc
   "mcpServers": {
     "playwright": {
       "command": "npx",
-      "args": ["@playwright/mcp@latest", "--browser", "chromium"]
+      "args": ["@playwright/mcp@latest", "--browser", "chromium"],
+      "env": {
+        "BASE_URL": "http://localhost:5173"
+      }
     },
     "chrome-devtools": {
       "command": "npx",
-      "args": ["chrome-devtools-mcp@latest"]
+      "args": ["chrome-devtools-mcp@latest"],
+      "env": {}
     }
   }
 }
