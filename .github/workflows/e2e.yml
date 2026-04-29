@@ -30,19 +30,6 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Start Postgres and backend
-        run: docker compose up --build -d
-
-      - name: Wait for backend to be ready
-        run: timeout 60 bash -c 'until curl -sf http://localhost:8080/event-types > /dev/null; do sleep 2; done'
-
-      - name: Start frontend dev server
-        run: npm run dev &
-        working-directory: frontend
-
-      - name: Wait for frontend to be ready
-        run: timeout 30 bash -c 'until curl -sf http://localhost:5173 > /dev/null; do sleep 2; done'
-
       - name: Run Playwright E2E tests
         run: npx playwright test
         env:
