@@ -122,9 +122,6 @@ func (s *Service) CreateBooking(ctx context.Context, req models.BookingRequest) 
 	if hour < workDayStart || hour >= workDayEnd {
 		return models.Booking{}, fmt.Errorf("%w: start time must be within working hours (%d:00-%d:00 UTC)", ErrInvalidRequest, workDayStart, workDayEnd)
 	}
-	if minute%slotMinutes != 0 {
-		return models.Booking{}, fmt.Errorf("%w: start time must align to %d-minute boundaries", ErrInvalidRequest, slotMinutes)
-	}
 
 	et, err := s.repo.GetEventTypeByID(ctx, req.EventTypeID)
 	if err != nil {
@@ -132,6 +129,10 @@ func (s *Service) CreateBooking(ctx context.Context, req models.BookingRequest) 
 			return models.Booking{}, fmt.Errorf("%w: event type not found", ErrNotFound)
 		}
 		return models.Booking{}, err
+	}
+
+	if minute%int(et.Duration) != 0 {
+		return models.Booking{}, fmt.Errorf("%w: start time must align to %d-minute boundaries", ErrInvalidRequest, et.Duration)
 	}
 
 	endTime := startUTC.Add(time.Duration(et.Duration) * time.Minute)

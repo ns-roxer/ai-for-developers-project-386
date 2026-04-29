@@ -21,6 +21,7 @@ test.describe("Event Type List Page", () => {
     await page.goto("/");
 
     const bookButtons = page.getByRole("link", { name: "Book" });
+    await bookButtons.first().waitFor({ timeout: 10_000 });
     const count = await bookButtons.count();
     expect(count).toBeGreaterThanOrEqual(SEED_EVENT_TYPES.length);
 
@@ -45,6 +46,9 @@ test.describe("Event Type List Page", () => {
     page,
   }) => {
     await page.goto("/");
+
+    // Wait for event types to load before checking duration text
+    await page.getByRole("link", { name: "Book" }).first().waitFor({ timeout: 10_000 });
 
     // Seeded event types have 15, 30, and 60 min durations
     await expect(page.getByText("15 min")).toBeVisible();

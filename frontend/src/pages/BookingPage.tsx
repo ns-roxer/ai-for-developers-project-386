@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format, addDays } from "date-fns";
+import { format, addDays, startOfDay } from "date-fns";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 
@@ -60,7 +60,7 @@ export default function BookingPage() {
     resolver: zodResolver(bookingSchema),
   });
 
-  const today = new Date();
+  const today = startOfDay(new Date());
   const maxDate = addDays(today, 13);
 
   const onSubmit = (values: BookingFormValues) => {
@@ -139,8 +139,9 @@ export default function BookingPage() {
               setSelectedSlot(undefined);
             }}
             disabled={(date) => date < today || date > maxDate}
-            fromDate={today}
-            toDate={maxDate}
+            hidden={(date) => date < today || date > maxDate}
+            startMonth={today}
+            endMonth={maxDate}
           />
         </CardContent>
       </Card>

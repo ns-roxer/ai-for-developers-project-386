@@ -44,25 +44,33 @@ func (h *Handler) Router(allowedOrigins []string) http.Handler {
 		MaxAge:           300,
 	}))
 
-	r.Get("/event-types", h.listEventTypes)
-	r.Get("/event-types/{eventTypeId}/available-slots", h.getAvailableSlots)
-	r.Post("/bookings", h.createBooking)
-	r.Post("/admin/event-types", h.createEventType)
-	r.Get("/admin/upcoming-bookings", h.listUpcomingBookings)
-
-	r.Route("/api", func(api chi.Router) {
+	registerAPIRoutes := func(api chi.Router) {
+		api.Use(h.requireService)
 		api.Get("/event-types", h.listEventTypes)
 		api.Get("/event-types/{eventTypeId}/available-slots", h.getAvailableSlots)
 		api.Post("/bookings", h.createBooking)
 		api.Post("/admin/event-types", h.createEventType)
 		api.Get("/admin/upcoming-bookings", h.listUpcomingBookings)
-	})
+	}
+
+	r.Group(registerAPIRoutes)
+	r.Route("/api", registerAPIRoutes)
 
 	if staticDir := os.Getenv("STATIC_DIR"); staticDir != "" {
 		r.Get("/*", spaHandler(staticDir))
 	}
 
 	return r
+}
+
+func (h *Handler) requireService(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if h.svc == nil {
+			h.writeError(w, http.StatusServiceUnavailable, "DATABASE_UNAVAILABLE", "database is not configured")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (h *Handler) listEventTypes(w http.ResponseWriter, r *http.Request) {

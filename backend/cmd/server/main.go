@@ -30,27 +30,33 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
-	if err != nil {
-		logger.Error("failed to connect to database", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
-	defer pool.Close()
+	var svc *service.Service
+	if cfg.DatabaseURL != "" {
+		pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+		if err != nil {
+			logger.Error("failed to connect to database", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+		defer pool.Close()
 
-	if err := pool.Ping(ctx); err != nil {
-		logger.Error("failed to ping database", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
-	logger.Info("connected to database")
+		if err := pool.Ping(ctx); err != nil {
+			logger.Error("failed to ping database", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+		logger.Info("connected to database")
 
-	if err := runMigrations(ctx, pool); err != nil {
-		logger.Error("failed to run migrations", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
-	logger.Info("migrations applied")
+		if err := runMigrations(ctx, pool); err != nil {
+			logger.Error("failed to run migrations", slog.String("error", err.Error()))
+			os.Exit(1)
+		}
+		logger.Info("migrations applied")
 
-	repo := repository.New(pool)
-	svc := service.New(repo)
+		repo := repository.New(pool)
+		svc = service.New(repo)
+	} else {
+		logger.Warn("DATABASE_URL is not set; starting without database — API endpoints will return 503")
+	}
+
 	h := handler.New(svc, logger)
 
 	origins := handler.ParseCORSOrigins(cfg.CORSAllowedOrigins)

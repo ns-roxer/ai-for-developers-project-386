@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"time"
 )
@@ -15,14 +14,9 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		return Config{}, fmt.Errorf("DATABASE_URL environment variable is required")
-	}
-
 	cfg := Config{
 		Port:               getEnvOrDefault("PORT", "8080"),
-		DatabaseURL:        dbURL,
+		DatabaseURL:        getEnvOrDefault("DATABASE_URL", "postgres://callbooking:callbooking@postgres:5432/callbooking?sslmode=disable"),
 		CORSAllowedOrigins: getEnvOrDefault("CORS_ALLOWED_ORIGINS", "*"),
 		LogLevel:           getEnvOrDefault("LOG_LEVEL", "info"),
 		ShutdownTimeout:    parseDurationOrDefault("SHUTDOWN_TIMEOUT", 5*time.Second),
