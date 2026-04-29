@@ -3,8 +3,11 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -46,6 +49,18 @@ func (h *Handler) Router(allowedOrigins []string) http.Handler {
 	r.Post("/bookings", h.createBooking)
 	r.Post("/admin/event-types", h.createEventType)
 	r.Get("/admin/upcoming-bookings", h.listUpcomingBookings)
+
+	r.Route("/api", func(api chi.Router) {
+		api.Get("/event-types", h.listEventTypes)
+		api.Get("/event-types/{eventTypeId}/available-slots", h.getAvailableSlots)
+		api.Post("/bookings", h.createBooking)
+		api.Post("/admin/event-types", h.createEventType)
+		api.Get("/admin/upcoming-bookings", h.listUpcomingBookings)
+	})
+
+	if staticDir := os.Getenv("STATIC_DIR"); staticDir != "" {
+		r.Get("/*", spaHandler(staticDir))
+	}
 
 	return r
 }
@@ -186,4 +201,25 @@ func ParseCORSOrigins(origins string) []string {
 		}
 	}
 	return result
+}
+
+func spaHandler(staticDir string) http.HandlerFunc {
+	fsys := os.DirFS(staticDir)
+	fileServer := http.FileServer(http.FS(fsys))
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
+			path = "index.html"
+		}
+
+		_, err := fs.Stat(fsys, path)
+		if err != nil {
+			indexPath := filepath.Join(staticDir, "index.html")
+			http.ServeFile(w, r, indexPath)
+			return
+		}
+
+		fileServer.ServeHTTP(w, r)
+	}
 }
