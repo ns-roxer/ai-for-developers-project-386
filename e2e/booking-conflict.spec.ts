@@ -4,26 +4,38 @@ import {
   getEventTypes,
   getAvailableSlots,
   createBookingAPI,
-  getTomorrowDate,
   getDatePlusDays,
   TEST_GUEST,
+  API_BASE,
 } from "./helpers";
 
 test.describe("Booking Conflict (409)", () => {
-  test("shows error toast when trying to double-book the same slot", async ({
+  test("UI shows a clear conflict message when the chosen slot was just taken", async ({
     page,
   }) => {
-    // 1. Get event type and available slots
     const eventTypes = await getEventTypes();
     const eventType = eventTypes[0];
 
-    // Use day+2 to avoid conflicting with other tests using tomorrow
-    const date = getDatePlusDays(2);
+    const date = getDatePlusDays(9);
     const slots = await getAvailableSlots(eventType.id, date);
     expect(slots.length).toBeGreaterThan(0);
 
-    // 2. Book the first slot via API (so it's taken)
     const targetSlot = slots[0];
+    const targetTimeHHMM = new Date(targetSlot.startTime).toLocaleTimeString(
+      [],
+      { hour: "2-digit", minute: "2-digit", hour12: false }
+    );
+
+    await page.goto(`/book/${eventType.id}`);
+
+    const dayNum = new Date(date).getDate();
+    await page
+      .getByRole("gridcell", { name: String(dayNum) })
+      .first()
+      .click();
+
+    await page.waitForSelector('button:has-text(":")', { timeout: 10_000 });
+
     await createBookingAPI({
       eventTypeId: eventType.id,
       startTime: targetSlot.startTime,
@@ -31,46 +43,33 @@ test.describe("Booking Conflict (409)", () => {
       guestEmail: "prebook@test.example",
     });
 
-    // 3. Navigate to the booking page
-    await page.goto(`/book/${eventType.id}`);
-
-    // 4. Pick the same date in the calendar
-    const dayNum = new Date(date).getDate();
-    const calendarButton = page
-      .getByRole("gridcell", { name: String(dayNum) })
+    const slotButton = page
+      .locator('button:has-text(":")')
+      .filter({ hasText: targetTimeHHMM })
       .first();
-    await calendarButton.click();
+    await expect(slotButton).toBeVisible();
+    await slotButton.click();
 
-    // 5. Wait for slots to load — the booked slot should no longer appear
-    //    (the backend removes it from available-slots), so we verify it's gone
-    await page.waitForSelector('button:has-text(":")', { timeout: 10_000 });
+    await page.getByLabel("Name").fill(TEST_GUEST.name);
+    await page.getByLabel("Email").fill(TEST_GUEST.email);
+    await page.getByRole("button", { name: "Confirm Booking" }).click();
 
-    // The slot we booked should NOT appear anymore since it's taken
-    const slotTimeFormatted = new Date(targetSlot.startTime)
-      .toISOString()
-      .slice(11, 16); // HH:MM in UTC
+    await expect(page.getByText(/already booked/i).first()).toBeVisible({
+      timeout: 10_000,
+    });
 
-    // If the backend correctly excludes booked slots, that time won't show.
-    // But let's also test the scenario where a conflict error shows up —
-    // in case of a race condition (two people booking at the same time).
-    // We'll force-submit via the API to simulate conflict in the page context.
+    await expect(
+      page.getByRole("heading", { name: /Booking Confirmed/i })
+    ).toHaveCount(0);
 
-    // Pick any remaining slot and verify normal flow still works
-    const slotButtons = page.locator('button:has-text(":")');
-    const count = await slotButtons.count();
-
-    if (count > 0) {
-      // There are still other slots available — good, page works normally
-      await slotButtons.first().click();
-      await expect(page.getByLabel("Name")).toBeVisible();
-    }
+    await expect(
+      page.getByRole("button", { name: /Confirm Booking/i })
+    ).toBeEnabled();
   });
 
-  test("backend returns 409 when booking an already-taken slot via API", async ({
-    page,
+  test("booked slot is removed from the available-slots list and a duplicate POST returns 409", async ({
+    page: _page,
   }) => {
-    // This test validates the API-level conflict directly, ensuring the
-    // contract's 409 response works correctly
     const eventTypes = await getEventTypes();
     const eventType = eventTypes[0];
 
@@ -80,7 +79,6 @@ test.describe("Booking Conflict (409)", () => {
 
     const targetSlot = slots[0];
 
-    // First booking — should succeed
     await createBookingAPI({
       eventTypeId: eventType.id,
       startTime: targetSlot.startTime,
@@ -88,8 +86,12 @@ test.describe("Booking Conflict (409)", () => {
       guestEmail: "first@test.example",
     });
 
-    // Second booking — same slot — should fail with 409
-    const res = await fetch("http://localhost:8080/bookings", {
+    const slotsAfter = await getAvailableSlots(eventType.id, date);
+    expect(
+      slotsAfter.some((s) => s.startTime === targetSlot.startTime)
+    ).toBe(false);
+
+    const res = await fetch(`${API_BASE}/bookings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -104,6 +106,6 @@ test.describe("Booking Conflict (409)", () => {
     const body = await res.json();
     expect(body).toHaveProperty("code");
     expect(body).toHaveProperty("message");
+    expect(String(body.message)).toMatch(/already booked/i);
   });
 });
-

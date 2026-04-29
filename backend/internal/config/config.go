@@ -16,7 +16,7 @@ type Config struct {
 func Load() (Config, error) {
 	cfg := Config{
 		Port:               getEnvOrDefault("PORT", "8080"),
-		DatabaseURL:        getEnvOrDefault("DATABASE_URL", "postgres://callbooking:callbooking@postgres:5432/callbooking?sslmode=disable"),
+		DatabaseURL:        getEnvOrDefault("DATABASE_URL", ""),
 		CORSAllowedOrigins: getEnvOrDefault("CORS_ALLOWED_ORIGINS", "*"),
 		LogLevel:           getEnvOrDefault("LOG_LEVEL", "info"),
 		ShutdownTimeout:    parseDurationOrDefault("SHUTDOWN_TIMEOUT", 5*time.Second),

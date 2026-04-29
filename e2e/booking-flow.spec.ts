@@ -180,6 +180,49 @@ test.describe("Booking Flow", () => {
     await expect(page.getByText("Valid email is required")).toBeVisible();
   });
 
+  test("booking made via UI is persisted and shown in admin upcoming bookings", async ({
+    page,
+  }) => {
+    const eventTypes = await getEventTypes();
+    const eventType = eventTypes[0];
+
+    const date = getDatePlusDays(8);
+    const slots = await getAvailableSlots(eventType.id, date);
+    expect(slots.length).toBeGreaterThan(0);
+
+    const guestName = `E2E UI Booking ${Date.now()}`;
+    const guestEmail = `ui-booking-${Date.now()}@test.example`;
+
+    await page.goto(`/book/${eventType.id}`);
+
+    const dayNum = new Date(date).getDate();
+    await page
+      .getByRole("gridcell", { name: String(dayNum) })
+      .first()
+      .click();
+
+    await page.waitForSelector('button:has-text(":")', { timeout: 10_000 });
+    const slotButton = page.locator('button:has-text(":")').first();
+    const pickedTime = (await slotButton.textContent())?.trim() ?? "";
+    expect(pickedTime).toMatch(/^\d{2}:\d{2}$/);
+    await slotButton.click();
+
+    await page.getByLabel("Name").fill(guestName);
+    await page.getByLabel("Email").fill(guestEmail);
+    await page.getByRole("button", { name: "Confirm Booking" }).click();
+
+    await expect(
+      page.getByRole("heading", { name: /Booking Confirmed/i })
+    ).toBeVisible({ timeout: 15_000 });
+
+    await page.goto("/admin/bookings");
+
+    const row = page.locator("tbody tr", { hasText: guestName });
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row.getByText(guestEmail)).toBeVisible();
+    await expect(row.getByText(eventType.name)).toBeVisible();
+  });
+
   test("'Back to Event Types' link navigates home after confirmation", async ({
     page,
   }) => {
