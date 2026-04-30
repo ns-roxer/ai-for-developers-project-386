@@ -16,7 +16,7 @@ test.describe("Booking Conflict (409)", () => {
     const eventTypes = await getEventTypes();
     const eventType = eventTypes[0];
 
-    const date = getDatePlusDays(9);
+    const date = getDatePlusDays(2);
     const slots = await getAvailableSlots(eventType.id, date);
     expect(slots.length).toBeGreaterThan(0);
 

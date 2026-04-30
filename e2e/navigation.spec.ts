@@ -35,17 +35,16 @@ test.describe("Navigation", () => {
   test("clicking Book button navigates to booking page", async ({ page }) => {
     await page.goto("/");
 
-    // Get event types to know the expected ID
     const eventTypes = await getEventTypes();
     expect(eventTypes.length).toBeGreaterThan(0);
 
-    // Click the first Book button
-    await page.getByRole("link", { name: "Book" }).first().click();
+    const bookLink = page
+      .getByRole("link", { name: "Book", exact: true })
+      .first();
+    await bookLink.waitFor({ timeout: 10_000 });
+    await bookLink.click();
 
-    // Should be on a /book/:id page
     await expect(page).toHaveURL(/\/book\//);
-
-    // Verify booking page content loads
     await expect(page.getByText("1. Pick a date")).toBeVisible();
   });
 

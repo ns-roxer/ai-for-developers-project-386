@@ -20,12 +20,11 @@ test.describe("Event Type List Page", () => {
   }) => {
     await page.goto("/");
 
-    const bookButtons = page.getByRole("link", { name: "Book" });
-    await bookButtons.first().waitFor({ timeout: 10_000 });
-    const count = await bookButtons.count();
-    expect(count).toBeGreaterThanOrEqual(SEED_EVENT_TYPES.length);
+    const bookButtons = page.getByRole("link", { name: "Book", exact: true });
+    await expect
+      .poll(async () => bookButtons.count(), { timeout: 10_000 })
+      .toBeGreaterThanOrEqual(SEED_EVENT_TYPES.length);
 
-    // Click the first Book button and verify navigation
     const href = await bookButtons.first().getAttribute("href");
     expect(href).toMatch(/^\/book\//);
   });
@@ -47,13 +46,14 @@ test.describe("Event Type List Page", () => {
   }) => {
     await page.goto("/");
 
-    // Wait for event types to load before checking duration text
-    await page.getByRole("link", { name: "Book" }).first().waitFor({ timeout: 10_000 });
+    await page
+      .getByRole("link", { name: "Book", exact: true })
+      .first()
+      .waitFor({ timeout: 10_000 });
 
-    // Seeded event types have 15, 30, and 60 min durations
-    await expect(page.getByText("15 min")).toBeVisible();
-    await expect(page.getByText("30 min")).toBeVisible();
-    await expect(page.getByText("60 min")).toBeVisible();
+    await expect(page.getByText("15 min").first()).toBeVisible();
+    await expect(page.getByText("30 min").first()).toBeVisible();
+    await expect(page.getByText("60 min").first()).toBeVisible();
   });
 
   test("event type cards display descriptions", async ({ page }) => {

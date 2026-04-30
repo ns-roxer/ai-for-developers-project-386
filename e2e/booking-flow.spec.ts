@@ -186,7 +186,7 @@ test.describe("Booking Flow", () => {
     const eventTypes = await getEventTypes();
     const eventType = eventTypes[0];
 
-    const date = getDatePlusDays(8);
+    const date = getTomorrowDate();
     const slots = await getAvailableSlots(eventType.id, date);
     expect(slots.length).toBeGreaterThan(0);
 

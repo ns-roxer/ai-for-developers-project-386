@@ -6,7 +6,6 @@ import {
   createBookingAPI,
   getTomorrowDate,
   getDatePlusDays,
-  TEST_GUEST,
 } from "./helpers";
 
 test.describe("Upcoming Bookings (Admin)", () => {
@@ -23,12 +22,13 @@ test.describe("Upcoming Bookings (Admin)", () => {
     // Pick the last available slot to reduce conflict with other tests
     const slot = slots[slots.length - 1];
     const guestName = `Admin Test ${Date.now()}`;
+    const guestEmail = `admin-test-${Date.now()}@test.example`;
 
     await createBookingAPI({
       eventTypeId: eventType.id,
       startTime: slot.startTime,
       guestName,
-      guestEmail: TEST_GUEST.email,
+      guestEmail,
     });
 
     // 2. Navigate to the upcoming bookings admin page
@@ -40,9 +40,10 @@ test.describe("Upcoming Bookings (Admin)", () => {
     ).toBeVisible();
 
     // 4. The table should show the booking we just created
-    await expect(page.getByText(guestName)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(TEST_GUEST.email)).toBeVisible();
-    await expect(page.getByText(eventType.name)).toBeVisible();
+    const row = page.locator("tbody tr", { hasText: guestName });
+    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row.getByText(guestEmail)).toBeVisible();
+    await expect(row.getByText(eventType.name)).toBeVisible();
   });
 
   test("shows table headers correctly", async ({ page }) => {
@@ -52,22 +53,29 @@ test.describe("Upcoming Bookings (Admin)", () => {
       page.getByRole("heading", { name: "Upcoming Bookings" })
     ).toBeVisible();
 
-    // Wait for table or "No upcoming bookings" message
-    const hasTable = await page.locator("table").isVisible().catch(() => false);
-    const hasEmpty = await page
-      .getByText("No upcoming bookings")
-      .isVisible()
-      .catch(() => false);
+    const table = page.locator("table");
+    const empty = page.getByText("No upcoming bookings");
 
-    if (hasTable) {
-      await expect(page.getByRole("columnheader", { name: "Event Type" })).toBeVisible();
-      await expect(page.getByRole("columnheader", { name: "Guest Name" })).toBeVisible();
-      await expect(page.getByRole("columnheader", { name: "Guest Email" })).toBeVisible();
-      await expect(page.getByRole("columnheader", { name: "Start" })).toBeVisible();
-      await expect(page.getByRole("columnheader", { name: "End" })).toBeVisible();
+    await expect(table.or(empty)).toBeVisible({ timeout: 10_000 });
+
+    if (await table.isVisible()) {
+      await expect(
+        page.getByRole("columnheader", { name: "Event Type" })
+      ).toBeVisible();
+      await expect(
+        page.getByRole("columnheader", { name: "Guest Name" })
+      ).toBeVisible();
+      await expect(
+        page.getByRole("columnheader", { name: "Guest Email" })
+      ).toBeVisible();
+      await expect(
+        page.getByRole("columnheader", { name: "Start" })
+      ).toBeVisible();
+      await expect(
+        page.getByRole("columnheader", { name: "End" })
+      ).toBeVisible();
     } else {
-      // It's fine if there are no bookings yet
-      expect(hasEmpty).toBeTruthy();
+      await expect(empty).toBeVisible();
     }
   });
 

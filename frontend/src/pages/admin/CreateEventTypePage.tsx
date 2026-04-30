@@ -55,10 +55,11 @@ export default function CreateEventTypePage() {
   };
 
   return (
-    <div className="max-w-lg mx-auto">
+    <div className="max-w-lg mx-auto space-y-4">
+      <h1 className="text-2xl font-bold">Create Event Type</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Create Event Type</CardTitle>
+          <CardTitle>New event type</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
