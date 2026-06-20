@@ -22,6 +22,6 @@
     "@playwright/mcp": "^0.0.71",
     "@playwright/test": "^1.59.1",
     "@types/node": "^25.6.0",
-    "chrome-devtools-mcp": "^0.23.0"
+    "chrome-devtools-mcp": "^1.1.0"
   }
 }
